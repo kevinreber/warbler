@@ -18,6 +18,17 @@ class UserAddForm(FlaskForm):
     image_url = StringField('(Optional) Image URL')
 
 
+class UserForm(FlaskForm):
+    """Form for editing user information."""
+
+    username = StringField('Username')
+    email = StringField('E-mail')
+    image_url = StringField('Image URL')
+    header_image_url = StringField('Image URL')
+    bio = StringField('Bio', )
+    password = PasswordField('Password')
+
+
 class LoginForm(FlaskForm):
     """Login form."""
 
