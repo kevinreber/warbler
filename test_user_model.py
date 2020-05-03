@@ -94,3 +94,28 @@ class UserModelTestCase(TestCase):
 
         self.assertTrue(self.u2.is_followed_by(self.u1))
         self.assertFalse(self.u1.is_followed_by(self.u2))
+
+    ####
+    #
+    # Signup tests
+    #
+    ####
+
+    ####
+    #
+    # Authentication tests
+    #
+    ####
+    def test_valid_authentication(self):
+        """User data should be returned if User.authenticate"""
+        user = User.authenticate(self.u1.username, "password")
+        self.assertIsNotNone(user)
+        self.assertEqual(user.id, self.u1.id)
+
+    def test_invalid_username(self):
+        """Should return False if incorrect username"""
+        self.assertFalse(User.authenticate("wrong_username", "password"))
+
+    def test_wrong_password(self):
+        """Should return False if incorrect password"""
+        self.assertFalse(User.authenticate(self.u1.username, "wrong_password"))
