@@ -9,7 +9,7 @@ from app import app
 import os
 from unittest import TestCase
 
-from models import db, User, Message, Follows, Likes
+from models import db, User, Message, Follows
 
 # BEFORE we import our app, let's set an environmental variable
 # to use a different database for tests (we need to do this
@@ -59,4 +59,3 @@ class UserModelTestCase(TestCase):
         # User should have no messages & no followers
         self.assertEqual(len(self.u.messages), 0)
         self.assertEqual(len(self.u.followers), 0)
-
