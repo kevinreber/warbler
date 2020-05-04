@@ -188,7 +188,7 @@ class MessageViewTestCase(TestCase):
                 # add self.testuser into session
                 sess[CURR_USER_KEY] = self.testuser_id
 
-            # this request unlikes the message
+            # this request will unlike message because message is already liked
             resp = c.post(f"/messages/{m.id}/like", follow_redirects=True)
             self.assertEqual(resp.status_code, 200)
 
@@ -196,28 +196,120 @@ class MessageViewTestCase(TestCase):
             # like has been deleted
             self.assertEqual(len(likes), 0)
 
-    ####
-    #
-    # Users message tests
-    #
-    ####
-    def test_add_message(self):
-        """Can use add a message?"""
+    def test_unauthorized_like(self):
+        """Test if user tries to like message while not logged in"""
 
-        # Since we need to change the session to mimic logging in,
-        # we need to use the changing-session trick:
+        self.setup_likes()
+
+        m = Message.query.filter(Message.text == "likable warble").one()
+        self.assertIsNotNone(m)
+
+        like_count = Likes.query.count()
 
         with self.client as c:
+            resp = c.post(f"/messages/{m.id}/like", follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+
+            self.assertIn("Access unauthorized", str(resp.data))
+
+            # Number of likes should not change during request
+            self.assertEqual(like_count, Likes.query.count())
+
+    ####
+    #
+    # Users followers/following tests
+    #
+    ####
+    def setup_followers(self):
+        """Set up followers for follower/following tests"""
+
+        f1 = Follows(user_being_followed_id=self.u1_id,
+                     user_following_id=self.testuser_id)
+        f2 = Follows(user_being_followed_id=self.u2_id,
+                     user_following_id=self.testuser_id)
+        f3 = Follows(user_being_followed_id=self.testuser_id,
+                     user_following_id=self.u1_id)
+
+        db.session.add_all([f1, f2, f3])
+        db.session.commit()
+
+    def test_show_user_show_with_follows(self):
+
+        self.setup_followers()
+        with self.client as c:
+            resp = c.get(f"/users/{self.testuser_id}")
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("@testuser", str(resp.data))
+
+            # set up BeautifulSoup to compare html data
+            soup = BeautifulSoup(str(resp.data), 'html.parser')
+
+            # find html in soup
+            found = soup.find_all("li", {"class": "stat"})
+
+            self.assertEqual(len(found), 4)
+
+            # test for a count of 0 messages
+            self.assertIn("0", found[0].text)
+
+            # Test for a count of 2 following
+            self.assertIn("2", found[1].text)
+
+            # Test for a count of 1 follower
+            self.assertIn("1", found[2].text)
+
+            # Test for a count of 0 likes
+            self.assertIn("0", found[3].text)
+
+    def test_show_following(self):
+
+        self.setup_followers()
+        with self.client as c:
             with c.session_transaction() as sess:
-                sess[CURR_USER_KEY] = self.testuser.id
+                sess[CURR_USER_KEY] = self.testuser_id
 
-            # Now, that session setting is saved, so we can have
-            # the rest of ours test
+            resp = c.get(f"/users/{self.testuser_id}/following")
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("@abc", str(resp.data))
+            self.assertIn("@efg", str(resp.data))
+            self.assertNotIn("@hij", str(resp.data))
+            self.assertNotIn("@testing", str(resp.data))
 
-            resp = c.post("/messages/new", data={"text": "Hello"})
+    def test_show_followers(self):
 
-            # Make sure it redirects
-            self.assertEqual(resp.status_code, 302)
+        self.setup_followers()
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser_id
 
-            msg = Message.query.one()
-            self.assertEqual(msg.text, "Hello")
+            resp = c.get(f"/users/{self.testuser_id}/followers")
+
+            self.assertIn("@abc", str(resp.data))
+            self.assertNotIn("@efg", str(resp.data))
+            self.assertNotIn("@hij", str(resp.data))
+            self.assertNotIn("@testing", str(resp.data))
+
+    def test_unauthorized_following_page_access(self):
+        """Test if user tries to view following while not logged in"""
+
+        self.setup_followers()
+
+        with self.client as c:
+            resp = c.get(
+                f"/users/{self.testuser_id}/following", follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertNotIn("@abc", str(resp.data))
+            self.assertIn("Access unauthorized", str(resp.data))
+
+    def test_unauthorized_followers_page_access(self):
+        """Test if user tries to view followers while not logged in"""
+
+        self.setup_followers()
+
+        with self.client as c:
+            resp = c.get(
+                f"/users/{self.testuser_id}/followers", follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertNotIn("@abc", str(resp.data))
+            self.assertIn("Access unauthorized", str(resp.data))
