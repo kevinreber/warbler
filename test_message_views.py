@@ -10,6 +10,7 @@ import os
 from unittest import TestCase
 
 from models import db, connect_db, Message, User, Likes, Follows
+from bs4 import BeautifulSoup
 
 # BEFORE we import our app, let's set an environmental variable
 # to use a different database for tests (we need to do this
@@ -118,7 +119,26 @@ class MessageViewTestCase(TestCase):
             resp = c.get(f"/users/{self.testuser_id}")
 
             self.assertIn("@testuser", str(resp.data))
-            """ TODO: ADD Beautiful soup function """
+
+            # set up BeautifulSoup to compare html data
+            soup = BeautifulSoup(str(resp.data), 'html.parser')
+
+            # find html in soup
+            found = soup.find_all("li", {"class": "stat"})
+
+            self.assertEqual(len(found), 4)
+
+            # test for a count of 2 messages
+            self.assertIn("2", found[0].text)
+
+            # Test for a count of 0 followers
+            self.assertIn("0", found[1].text)
+
+            # Test for a count of 0 following
+            self.assertIn("0", found[2].text)
+
+            # Test for a count of 1 like
+            self.assertIn("1", found[3].text)
 
     def test_add_like(self):
         m = Message(id=7777, text="Testing add like", user_id=self.u1.id)
@@ -150,7 +170,21 @@ class MessageViewTestCase(TestCase):
         l = Likes.query.filter(
             Likes.user_id == self.testuser_id and Likes.message_id == m.id).one()
 
-        """TODO: have user unlike message"""
+        # make sure self.testuser likes "likable warble"
+        self.assertIsNotNone(l)
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                # add self.testuser into session
+                sess[CURR_USER_KEY] = self.testuser_id
+
+            # this request unlikes the message
+            resp = c.post(f"/messages/{m.id}/like", follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+
+            likes = Likes.query.filter(Likes.message_id == m.id).all()
+            # like has been deleted
+            self.assertEqual(len(likes), 0)
 
     def test_add_message(self):
         """Can use add a message?"""
