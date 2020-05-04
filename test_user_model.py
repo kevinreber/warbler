@@ -8,6 +8,7 @@
 from app import app
 import os
 from unittest import TestCase
+from sqlalchemy import exc
 
 from models import db, User, Message, Follows
 
@@ -100,12 +101,61 @@ class UserModelTestCase(TestCase):
     # Signup tests
     #
     ####
+    def test_valid_signup(self):
+        test_user = User.signup(
+            "test_user",
+            "test_user@test.com",
+            "password",
+            None
+        )
 
-    ####
-    #
-    # Authentication tests
-    #
-    ####
+        test_user_id = 9999
+        test_user.id = test_user_id
+        db.session.add(test_user)
+        db.session.commit()
+
+        user = User.query.get(test_user_id)
+        self.assertIsNotNone(user)
+        self.assertEqual(user.username, "test_user")
+        self.assertEqual(user.email, "test_user@test.com")
+        # Default image if None
+        self.assertEqual(user.image_url, "/static/images/default-pic.png")
+        # Password should be hashed
+        self.assertNotEqual(user.password, "password")
+        # Bcrypt strings should start with $2b$
+        self.assertTrue(user.password.startswith("$2b$"))
+
+    def test_invalid_username_signup(self):
+        invalid = User.signup(None, "test_user@test.com", "password", None)
+        u_id = 9999
+        invalid.id = u_id
+
+        # Raises Integrity Error if submitted
+        with self.assertRaises(exc.IntegrityError) as context:
+            db.session.commit()
+
+    def test_invalid_email_signup(self):
+        invalid = User.signup("test_user", None, "password", None)
+        u_id = 9999
+        invalid.id = u_id
+
+        # Raises Integrity Error if submitted
+        with self.assertRaises(exc.IntegrityError) as context:
+            db.session.commit()
+
+    def test_invalid_password_signup(self):
+        with self.assertRaises(ValueError) as context:
+            invalid = User.signup("test_user", "test_user@test.com", "", None)
+
+        with self.assertRaises(ValueError) as context:
+            User.signup("test_user", "test_user@test.com", None, None)
+
+        ####
+        #
+        # Authentication tests
+        #
+        ####
+
     def test_valid_authentication(self):
         """User data should be returned if User.authenticate"""
         user = User.authenticate(self.u1.username, "password")
