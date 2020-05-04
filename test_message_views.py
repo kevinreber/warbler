@@ -69,6 +69,11 @@ class MessageViewTestCase(TestCase):
         db.session.rollback()
         return resp
 
+    ####
+    #
+    # Users views tests
+    #
+    ####
     def test_user_index(self):
         with self.client as c:
             resp = c.get("/users")
@@ -99,6 +104,11 @@ class MessageViewTestCase(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn("@testuser", str(resp.data))
 
+    ####
+    #
+    # Users likes tests
+    #
+    ####
     def setup_likes(self):
         """Adds messages to DB"""
 
@@ -186,6 +196,11 @@ class MessageViewTestCase(TestCase):
             # like has been deleted
             self.assertEqual(len(likes), 0)
 
+    ####
+    #
+    # Users message tests
+    #
+    ####
     def test_add_message(self):
         """Can use add a message?"""
 
