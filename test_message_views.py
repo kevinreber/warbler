@@ -98,6 +98,60 @@ class MessageViewTestCase(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn("@testuser", str(resp.data))
 
+    def setup_likes(self):
+        """Adds messages to DB"""
+
+        m1 = Message(text="trending warble", user_id=self.testuser_id)
+        m2 = Message(text="Eating some lunch", user_id=self.testuser_id)
+        m3 = Message(id=9876, text="likable warble", user_id=self.u1_id)
+        db.session.add_all([m1, m2, m3])
+        db.session.commit()
+
+        l1 = Likes(user_id=self.testuser.id, message_id=9876)
+        db.session.add(l1)
+        db.session.commit()
+
+    def test_user_show_with_likes(self):
+        self.setup_likes()
+
+        with self.client as c:
+            resp = c.get(f"/users/{self.testuser_id}")
+
+            self.assertIn("@testuser", str(resp.data))
+            """ TODO: ADD Beautiful soup function """
+
+    def test_add_like(self):
+        m = Message(id=7777, text="Testing add like", user_id=self.u1.id)
+        db.session.add(m)
+        db.session.commit()
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                # add self.testuser into session
+                sess[CURR_USER_KEY] = self.testuser_id
+
+            resp = c.post("/messages/7777/like", follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+
+            likes = Likes.query.filter(Likes.message_id == 7777).all()
+            self.assertEqual(len(likes), 1)
+            self.assertEqual(likes[0].user_id, self.testuser_id)
+
+    def test_remove_like(self):
+        self.setup_likes()
+
+        m = Message.query.filter(Message.text == "likable warble").one()
+        self.assertIsNotNone(m)
+
+        # self.u1 should be m.user_id
+        self.assertNotEqual(m.user_id, self.testuser_id)
+
+        # get like of self.testuser: "likable warble"
+        l = Likes.query.filter(
+            Likes.user_id == self.testuser_id and Likes.message_id == m.id).one()
+
+        """TODO: have user unlike message"""
+
     def test_add_message(self):
         """Can use add a message?"""
 

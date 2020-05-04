@@ -304,10 +304,7 @@ def messages_show(message_id):
 @app.route('/messages/<int:message_id>/like', methods=["POST"])
 def toggle_message_like(message_id):
     """Toggles if user likes/unlikes message"""
-    print("###################################")
-    print("###################################")
-    print("LIKED")
-    print(message_id)
+
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
