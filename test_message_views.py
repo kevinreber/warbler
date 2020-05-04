@@ -178,3 +178,23 @@ class MessageViewTestCase(TestCase):
             # Message should still exist
             m = Message.query.get(1234)
             self.assertIsNotNone(m)
+
+    def test_message_delete_no_authentication(self):
+        """If user is not logged in, they should not have access to delete messages"""
+
+        new_m = Message(
+            id=1234,
+            text="a test message",
+            user_id=self.testuser_id
+        )
+        db.session.add(new_m)
+        db.session.commit()
+
+        with self.client as c:
+            resp = c.post(f"/messages/1234/delete", follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("Access unauthorized", str(resp.data))
+
+            # Message should still exist
+            m = Message.query.get(1234)
+            self.assertIsNotNone(m)
