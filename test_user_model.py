@@ -150,12 +150,11 @@ class UserModelTestCase(TestCase):
         with self.assertRaises(ValueError) as context:
             User.signup("test_user", "test_user@test.com", None, None)
 
-        ####
-        #
-        # Authentication tests
-        #
-        ####
-
+    ####
+    #
+    # Authentication tests
+    #
+    ####
     def test_valid_authentication(self):
         """User data should be returned if User.authenticate"""
         user = User.authenticate(self.u1.username, "password")
