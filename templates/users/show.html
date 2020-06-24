@@ -23,7 +23,11 @@
         <button class="
               btn
               btn-sm
-              {{'btn-primary' if message.id in likes else 'btn-secondary'}}">
+              {% if message.id in likes %}
+                  btn-primary
+              {% else %}
+                btn-secondary
+              {% endif %}">
           <i class="fa fa-thumbs-up"></i>
         </button>
       </form>
